@@ -1,0 +1,135 @@
+const Project = "Tree map for movie sales";
+/**coded by Larrick. follow Larrick12 on codepen, github.com/larrick12*/
+
+let w = 850,
+  h = 450,
+  padding = 60;
+
+let svgCont = d3
+  .select(".svgcont")
+  .append("svg")
+  .attr("width", w + 550)
+  .attr("height", h + 350);
+
+let overlay = d3
+  .select(".svgcont")
+  .append("div")
+  .style("opacity", 0)
+  .attr("id", "tooltip");
+
+let url =
+  "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json";
+
+d3.json(url, (err, data) => {
+  if (err) return console.error(err);
+
+  let root = d3
+    .hierarchy(data)
+    .sum((d) => d.value)
+    .sort((a, b) => {
+      return b.value - a.value;
+    });
+
+  let treemap = d3
+    .treemap()
+    .size([w + 180, h + 190])
+    .padding(1)
+    .paddingInner(1)(root);
+
+  let thresh = d3.scaleOrdinal(d3.schemeCategory10);
+
+  let tree = svgCont
+    .selectAll("g")
+    .data(root.leaves())
+    .enter()
+    .append("g")
+    .attr("transform", `translate(${padding + 90},` + 30 + ")");
+  let format = d3.format(",d");
+
+  let stem = tree
+    .append("rect")
+    .attr("class", "tile")
+    .attr("x", (d) => d.x0)
+    .attr("y", (d) => d.y0)
+    .attr("width", (d) => d.x1 - d.x0)
+    .attr("height", (d) => d.y1 - d.y0)
+    .attr("data-name", (d) => d.data.name)
+    .attr("data-category", (d) => d.data.category)
+    .attr("data-value", (d) => d.data.value)
+    .style("stroke", "#eee")
+    .style("fill", (d) => thresh(d.data.category))
+    .on("mouseover", (d) => {
+      overlay.transition().duration(200).style("opacity", 0.9);
+
+      overlay
+        .html(
+          "<span class='tips'>" +
+            "Name: " +
+            "<b>" +
+            d.data.name +
+            "</b>" +
+            "<br/>" +
+            "Category: " +
+            d.data.category +
+            "<br/>" +
+            "Value: " +
+            format(d.data.value) +
+            "</span>"
+        )
+        .attr("data-value", (d) => d.data.value);
+    })
+    .on("mousemove", (d) => {
+      overlay
+        .style("left", d3.event.pageX + 5 + "px")
+        .style("top", d3.event.pageY - 28 + "px");
+    })
+    .on("mouseout", (d) => {
+      overlay.transition().duration(200).style("opacity", 0);
+    });
+
+  tree
+    .append("text")
+    .attr("class", "tile-text")
+    .selectAll("tspan")
+    .data((d) =>
+      d.data.name.split(/(?=[A-Z][^A-Z])/g).map((f) => {
+        return {
+          text: f,
+          x0: d.x0,
+          y0: d.y0
+        };
+      })
+    )
+    .enter()
+    .append("tspan")
+    .attr("x", (d) => d.x0 + 4)
+    .attr("y", (d, i) => d.y0 + 10 + i * 8)
+    .text((d) => d.text)
+    .attr("font-size", 10 + "px")
+    .attr("word-wrap", "break-word");
+
+  let legendCont = svgCont.append("g").attr("id", "legend");
+
+  let legend = legendCont
+    .selectAll("#legend")
+    .data(thresh.domain())
+    .enter()
+    .append("g")
+    .attr("transform", "translate(60, 700)");
+
+  legend
+    .append("rect")
+    .attr("class", "legend-item")
+    .attr("x", (d, i) => 300 + i * 100)
+    .attr("width", 18)
+    .attr("height", 18)
+    .attr("fill", (d) => thresh(d));
+
+  legend
+    .append("text")
+    .attr("x", (d, i) => 300 + i * 100)
+    .attr("y", 40)
+    .attr("class", "legend-text")
+    .text((d, i) => d)
+    .attr("text-anchor", "left");
+});
